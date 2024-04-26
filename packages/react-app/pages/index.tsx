@@ -8,14 +8,70 @@ import Web3 from "web3";
 
 export default function Home() {
     const CELOTokenAddress = "0xF194afDf50B03e69Bd7D057c1Aa9e10c9954E4C9"; // CELO Testnet
- 
+    // pricefeed address for CELO/USD on Alfajores
+    const celoToUsd = "0x022F9dCC73C5Fb43F2b4eF2EF9ad3eDD1D853946";
+    // pricefeed address for CELO/USD on Alfajores
+    const aggregatorV3InterfaceABI = [
+        {
+            inputs: [],
+            name: "decimals",
+            outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
+            stateMutability: "view",
+            type: "function",
+        },
+        {
+            inputs: [],
+            name: "description",
+            outputs: [{ internalType: "string", name: "", type: "string" }],
+            stateMutability: "view",
+            type: "function",
+        },
+        {
+            inputs: [{ internalType: "uint80", name: "_roundId", type: "uint80" }],
+            name: "getRoundData",
+            outputs: [
+                { internalType: "uint80", name: "roundId", type: "uint80" },
+                { internalType: "int256", name: "answer", type: "int256" },
+                { internalType: "uint256", name: "startedAt", type: "uint256" },
+                { internalType: "uint256", name: "updatedAt", type: "uint256" },
+                { internalType: "uint80", name: "answeredInRound", type: "uint80" },
+            ],
+            stateMutability: "view",
+            type: "function",
+        },
+        {
+            inputs: [],
+            name: "latestRoundData",
+            outputs: [
+                { internalType: "uint80", name: "roundId", type: "uint80" },
+                { internalType: "int256", name: "answer", type: "int256" },
+                { internalType: "uint256", name: "startedAt", type: "uint256" },
+                { internalType: "uint256", name: "updatedAt", type: "uint256" },
+                { internalType: "uint80", name: "answeredInRound", type: "uint80" },
+            ],
+            stateMutability: "view",
+            type: "function",
+        },
+        {
+            inputs: [],
+            name: "version",
+            outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+            stateMutability: "view",
+            type: "function",
+        },
+    ]
+
     const web3 = new Web3("https://alfajores-forno.celo-testnet.org")
     const celoContract = new web3.eth.Contract(erc20Abi, CELOTokenAddress)
+    // contract instance of the price feed contract
+    const priceFeed = new web3.eth.Contract(aggregatorV3InterfaceABI, celoToUsd)
 
     const [userAddress, setUserAddress] = useState("");
     const [isMounted, setIsMounted] = useState(false);
     const [celoBalance, setCeloBalance] = useState("");
-  
+    // store the celoValue in the state
+    const [celoValue, setCeloValue] = useState("");
+
 
     const { address, isConnected } = useAccount();
 
@@ -29,6 +85,7 @@ export default function Home() {
 
             if (isMounted) {
                 getBalance();
+                getUSDValue()
             }
         }
     }, [address, isConnected, isMounted]);
@@ -50,7 +107,19 @@ export default function Home() {
             });
     };
 
- 
+    const getUSDValue = async () => {
+        priceFeed.methods
+            .latestRoundData()
+            .call()
+            .then((roundData: any) => {
+                // get the value from position one of the response object. The value will come back as bigInt so we will have to format it. 
+                const balance = (formatUnits(roundData[1], 8))
+                setCeloValue(balance)
+                // Do something with roundData
+                console.log("Latest Round Data", roundData)
+            })
+    };
+
 
 
     return (
@@ -61,8 +130,11 @@ export default function Home() {
             {isConnected ? (
                 <div className="h2 text-center">
                     Your address: {userAddress}
-                      {/* add your values here, we will shorten it to two decimal values */}
+                    {/* add your values here, we will shorten it to two decimal values */}
                     <p> CELO Balance {Number(celoBalance).toFixed(2)}</p>
+                    <br />
+                    <p> USD value of CELO {(Number(celoBalance) * Number(celoValue)).toFixed(2)}</p>
+
                 </div>
 
             ) : (
